@@ -85,4 +85,23 @@ function /(f::Taylor, g::Taylor)
     Taylor(v, m)
 end
 /(f::Taylor,c::Number)=f*inv(c)
-/(c::Number,f::Taylor)=Taylor(c)/f;
+/(c::Number,f::Taylor)=Taylor(c)/f
+import Base.sqrt
+function sqrt(f::Taylor)
+    if f.coeffs[1]<0
+        error("Raíz negativa")
+    end
+    m=f.order
+    v=zeros(Float64,m+1)
+    v[1]=sqrt(f.coeffs[1])
+    cte=0.5/v[1]
+    if m>1
+        v[2]=f.coeffs[2]*cte
+    end
+    for i in 2:m
+        k=ceil(i/2)
+        S=sum([v[j+1]*v[i-j+1] for j in 1:k])
+        v[i+1]=cte*(f.coeffs[i+1]-S)
+    end
+    Taylor(v,m)
+end;
