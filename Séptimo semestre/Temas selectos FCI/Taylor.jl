@@ -33,7 +33,7 @@ end
 +(f::Taylor,c::Number)=f+Taylor(c)
 
 function -(f::Taylor,g::Taylor)
-    fcoeffs,g=promote
+    f.coeffs,g.coeffs=promote(f.coeffs,g.coeffs)
     m=max(f.order,g.order)
     if m==f.order
         g=Taylor(g,m)
@@ -67,6 +67,10 @@ end
 *(f::Taylor,c::Number)=Taylor(c*f.coeffs, f.order)
 *(c::Number,f::Taylor)=Taylor(c*f.coeffs, f.order)
 
+function *(f::Taylor,G::Array)
+  [f*g for g in G]
+end
+
 function /(f::Taylor, g::Taylor)
     m=max(f.order,g.order)
     if g.coeffs[1]==0
@@ -95,13 +99,26 @@ function sqrt(f::Taylor)
     v=zeros(Float64,m+1)
     v[1]=sqrt(f.coeffs[1])
     cte=0.5/v[1]
-    if m>1
-        v[2]=f.coeffs[2]*cte
-    end
-    for i in 2:m
-        k=ceil(i/2)
-        S=sum([v[j+1]*v[i-j+1] for j in 1:k])
-        v[i+1]=cte*(f.coeffs[i+1]-S)
+    for i in 1:m #vamos a ir sacando el coeficiente v[i+1], el cual corresponde a p_i
+        if iseven(i) #i es par
+            s=(i-2)/2
+            suma=sum([v[j+1]*v[i-j+1] for j in 1:s])
+            v[i+1]=cte*(f.coeffs[i+1]-2*suma-(v[(i/2)+1]^2))
+        else
+            s=(i-1)/2
+            suma=sum([v[j+1]*v[i-j+1] for j in 1:s])
+            v[i+1]=cte*(f.coeffs[i+1]-2*suma)
+        end
     end
     Taylor(v,m)
+end
+function ^(f::Taylor,n::Integer)
+  if n==1
+    return f
+  end
+  g=f
+  for i in 2:n
+    g=g*f
+  end
+  g
 end;
