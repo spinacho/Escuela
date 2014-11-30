@@ -100,6 +100,33 @@ function manual_animation(Qx,Qy,xmin,xmax,ymin,ymax,fmes=100,framesps=30,itvl=20
     myanim[:save](name, writer="imagemagick", fps=framesps)
 end
 
+function manual_animation_3D(Qx,Qy,Qz,xmin,xmax,ymin,ymax,zmin,zmax,fmes=100,framesps=30,itvl=20,nombre="Animacion")
+  fig = plt.figure()
+    ax = subplot(111, projection="3d", xlim=(xmin,xmax), ylim=(ymin,ymax), zlim=(zmin,zmax))
+
+    global line1 = ax[:plot]([], [], [], "o", lw=2)[1]
+
+    function init()
+        global line1
+
+        line1[:set_data]([], [])
+        line1[:set_3d_properties]([])
+
+        return ([line1],None)
+    end
+
+    function animate(i)
+        global line1
+        # i+1 para que i=0 sea x[1]
+        line1[:set_data]([Qx][i+1],[Qy][i+1])
+        line1[:set_3d_properties]([Qz][i+1])
+        return ([line1],None)
+    end
+    name=nombre*".git"
+    myanim = anim.FuncAnimation(fig, animate, init_func=init, frames=fmes, interval=itvl, blit=true);
+    myanim[:save](name, writer="imagegick" , fps=framesps)
+end
+
 
 function final_anim(Q,A,nombre="Animacion",frames=length(Q[:,1]),fps=ceil(frames/3),interval=ceil(frames/5))
   Qx,Qy=runge_kuttaer(Q,A)

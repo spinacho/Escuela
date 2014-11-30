@@ -284,10 +284,22 @@ end
 
 function graficadora_cuerpos(Q,n)
   for i in 1:n
-      plot(Q[3i-2],Q[3i-1],"o",label="Planeta $i")
+      plot(Q[3i-2],Q[3i-1],"-",label="Planeta $i")
   end
     xlabel(L"$x$")
     ylabel(L"$y$")
+    title("Movimiento de los $n cuerpos")
+    axis("equal")
+    legend(loc=0,fontsize=10)
+end
+
+function graficadora_cuerpos3D(Q,n)
+  for i in 1:n
+      plot3D(Q[3i-2],Q[3i-1],Q[3i],"-",label="Planeta $i")
+  end
+    xlabel("x")
+    ylabel("y")
+    zlabel("z")
     title("Movimiento de los $n cuerpos")
     axis("equal")
     legend(loc=0,fontsize=10)
@@ -303,6 +315,13 @@ function graficadora_energias(T,U,K,E)
   legend(loc=0,fontsize=10)
 end
 
+function pasos(T)
+    dT=Float64[]
+    for i in 1:(length(T)-1)
+        push!(dT,T[i+1]-T[i])
+    end
+    dT
+end
 
 const orderMax=18
 const epsilon=1e-20
