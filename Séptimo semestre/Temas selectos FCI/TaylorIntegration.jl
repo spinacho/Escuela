@@ -18,7 +18,6 @@ Taylor{T<:Number}(c::T)=Taylor{T}([c],0)
 Taylor{T<:Number}(t::Taylor{T},n::Int)=Taylor{T}(t.coeffs, n)
 Taylor{T<:Number}(t::Taylor{T})=Taylor{T}(t.coeffs, 0)
 
-
 function +(f::Taylor,g::Taylor)
     m=max(f.order,g.order)
     if m==f.order
@@ -151,6 +150,34 @@ function sistema(Q,M,n=length(M))
     A
 end
 
+function pars_pot(Q,M,i,j)
+    #Esta funcion saca la energía potencial que tiene j debido a i
+    if i==j
+        0
+    else
+        -M[i]*M[j]/R(i,j,Q)
+    end
+end
+
+function total_pot(Q,M,j,n=length(M))
+    sum([pars_pot(Q,M,s,j) for s in 1:n])
+end
+
+function system_inst_pot(t,Q,V,M,n=length(M))
+    A=Float64[]
+    for i in 1:n
+        T=total_pot(Q,M,i,n)
+        push!(A,T)
+    end
+    sum(A)/2
+end
+
+function kinetic(t,Q,V,M,n=length(M))
+    V2=[V[3i-2]^2+V[3i-1]^2+V[3i]^2 for i in 1:n]
+    K=[0.5*M[i]*V2[i] for i in 1:n]
+    sum(K)
+end
+
 function NextTaylors(f::Function,Q0,V0,M,n)
     coords=3n
     Q=[Float64[Q0[i]] for i in 1:coords]
@@ -168,7 +195,7 @@ function NextTaylors(f::Function,Q0,V0,M,n)
     Q,V
 end
 
-function TimeStep(Q,V)
+function TimeStep(Q,V,t0=false,tmax=false)
     MINS_TOT=Float64[]
     m=length(Q)
     for i in 1:m
@@ -199,8 +226,13 @@ function TimeStep(Q,V)
     if length(MINS_TOT)==0
         error("Auch")
     else
-        minimum(MINS_TOT)
+        t=minimum(MINS_TOT)
     end
+  if t0==false && tmax==false
+    t
+  elseif t0+t>tmax
+    tmax-t0
+  end
 end
 
 function EvalHorner(Q,V,h)
@@ -221,9 +253,9 @@ function EvalHorner(Q,V,h)
     Q0,V0
 end
 
-function TaylorStepper(f::Function,Q0,V0,M,tiempo,n)
+function TaylorStepper(f::Function,Q0,V0,M,tiempo,n,t=false,tmax=false)
     q,v=NextTaylors(f,Q0,V0,M,n)
-    h=TimeStep(q,v)
+    h=TimeStep(q,v,t,tmax)
     c1,c2=EvalHorner(q,v,h)
     tiempo+=h
     return c1,c2,tiempo
@@ -233,32 +265,61 @@ function TaylorIntegrator(Q0,V0,t0,tf,f,M,n=length(M))
     Q=[Float64[Q0[i]] for i in 1:3n]
     V=[Float64[V0[i]] for i in 1:3n]
     T=Float64[t0]
+    U=Float64[system_inst_pot(t0,Q0,V0,M,n)]
+    K=Float64[kinetic(t0,Q0,V0,M,n)]
     while t0<tf
         Q0,V0,t0=TaylorStepper(f,Q0,V0,M,t0,n)
         push!(T,t0)
+        push!(U,system_inst_pot(t0,Q0,V0,M,n))
+        push!(K,kinetic(t0,Q0,V0,M,n))
         for i in 1:3n
             push!(Q[i],Q0[i])
             push!(V[i],V0[i])
         end
     end
-    T,Q,V
+    E=K+U
+    dE=(E-E[1])/eps(E[1])
+    T,Q,V,U,K,E,dE
 end
 
-function graficadora_cuerpos(q0,v0,t0,tf,M,excluidos)
-  n=length(M)
-  T,Q,DQ=TaylorIntegrator(q0,v0,t0,tf,sistema,M,n)
-    for i in 1:n
-        if i in excluidos
-        else
-            x=3i-2
-            y=3i-1
-            z=3i
-            plot(Q[x],Q[y],"o",label="Planeta $i")
-        end
-    end
+function graficadora_cuerpos(Q,n)
+  for i in 1:n
+      plot(Q[3i-2],Q[3i-1],"o",label="Planeta $i")
+  end
     xlabel(L"$x$")
     ylabel(L"$y$")
     title("Movimiento de los $n cuerpos")
     axis("equal")
     legend(loc=0,fontsize=10)
-end;
+end
+
+function graficadora_energias(T,U,K,E)
+  plot(T,U,label="Energía potencial")
+  plot(T,K,label="Energía cinética")
+  plot(T,E,label="Energía total")
+  xlabel("Tiempo")
+  ylabel("Energía")
+  title("Energía del sistema")
+  legend(loc=0,fontsize=10)
+end
+
+
+const orderMax=18
+const epsilon=1e-20
+println("Por default se tomaron orderMax=$orderMax y epsilon=$epsilon");
+
+function funciones()
+  "TaylorIntegrator, graficadora_cuerpos, graficadora_energias, TaylorStepper"
+end
+function TaylorStepper()
+  "TaylorStepper(f::Function,Q0,V0,M,tiempo,n,t=false,tmax=false)=Q,V,t"
+end
+function TaylorIntegrator()
+  "TaylorIntegrator(Q0,V0,t0,tf,f,M,n=lenght(M))=T,Q,V,U,K,E,dE"
+end
+function graficadora_cuerpos()
+  "graficadora_cuerpos(Q,n) hace la gráfica 2D de las posiciones Q con n cuerpos"
+end
+function graficadora_energias()
+  "graficadora_energias(T,U,K,E) hace la gráfica de las energías"
+end
